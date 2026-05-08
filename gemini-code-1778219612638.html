@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>互動相框拍照</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            font-family: sans-serif;
+            background-color: #f0f0f0;
+            margin: 0;
+            padding: 20px;
+        }
+        /* 讓相機畫面與相框疊加的容器 */
+        .camera-container {
+            position: relative;
+            width: 100%;
+            max-width: 400px;
+            overflow: hidden;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+        /* 相機畫面 */
+        video {
+            width: 100%;
+            display: block;
+            object-fit: cover;
+        }
+        /* 相框疊加層（必須是透明 PNG） */
+        .frame-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none; /* 確保點擊不會被相框擋住 */
+        }
+        button {
+            margin-top: 20px;
+            padding: 12px 24px;
+            font-size: 18px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            width: 100%;
+            max-width: 400px;
+        }
+        button:active {
+            background-color: #0056b3;
+        }
+        /* 最終合成的照片顯示區 */
+        #result {
+            margin-top: 20px;
+            width: 100%;
+            max-width: 400px;
+            border-radius: 10px;
+            display: none; /* 初始隱藏，拍完才顯示 */
+        }
+    </style>
+</head>
+<body>
+
+    <h2>活動專屬拍立得</h2>
+
+    <div class="camera-container">
+        <video id="video" autoplay playsinline></video>
+        <img id="frame" class="frame-overlay" src="frame.png" crossorigin="anonymous" alt="相框">
+    </div>
+
+    <button id="snap">📸 拍照</button>
+
+    <canvas id="canvas" style="display:none;"></canvas>
+    
+    <img id="result" alt="您的照片">
+
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const snap = document.getElementById('snap');
+        const result = document.getElementById('result');
+        const frame = document.getElementById('frame');
+
+        // 1. 請求開啟手機前鏡頭 (user) 或後鏡頭 (environment)
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } })
+            .then(stream => {
+                video.srcObject = stream;
+            })
+            .catch(err => {
+                console.error("無法存取相機，請確認權限", err);
+                alert("請允許網頁存取您的相機以使用此功能喔！");
+            });
+
+        // 2. 點擊拍照按鈕的行為
+        snap.addEventListener('click', () => {
+            // 將畫布大小設定為與相機畫面一致
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const ctx = canvas.getContext('2d');
+
+            // 步驟 A: 將當下的影片畫面畫到 Canvas 上
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            // 步驟 B: 將相框圖片畫到 Canvas 上 (覆蓋在相機畫面上方)
+            ctx.drawImage(frame, 0, 0, canvas.width, canvas.height);
+
+            // 步驟 C: 將 Canvas 轉換成圖片格式，並顯示出來讓用戶可以長按儲存
+            result.src = canvas.toDataURL('image/png');
+            result.style.display = 'block';
+            
+            // 可選：拍完照後視窗往下捲動，讓用戶看到照片
+            result.scrollIntoView({ behavior: 'smooth' });
+        });
+    </script>
+
+</body>
+</html>
