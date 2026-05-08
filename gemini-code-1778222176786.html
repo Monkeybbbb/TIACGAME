@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>互動拍照 - 中央圖案</title>
+    <style>
+        /* 讓畫面全螢幕且不要有滾動條 */
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #000;
+            height: 100vh;
+            overflow: hidden;
+            font-family: sans-serif;
+        }
+
+        /* 疊加容器 */
+        .camera-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        /* 底層：相機畫面 */
+        video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        /* 表層：置中的圖片 */
+        .center-image {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 200px; /* 這裡控制使用者在畫面上看到的圖片大小 */
+            max-width: 60%;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        /* 懸浮在底部的拍照按鈕 */
+        #snap {
+            position: absolute;
+            bottom: 40px; /* 距離底部的距離 */
+            left: 50%;
+            transform: translateX(-50%); /* 讓按鈕水平置中 */
+            padding: 16px 32px;
+            font-size: 18px;
+            font-weight: bold;
+            background-color: #ffffff;
+            color: #333;
+            border: none;
+            border-radius: 50px; /* 圓角按鈕 */
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            cursor: pointer;
+            z-index: 20; /* 確保按鈕在最上層 */
+        }
+
+        /* 按鈕按下去的視覺回饋 */
+        #snap:active {
+            background-color: #e0e0e0;
+            transform: translateX(-50%) scale(0.95);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="camera-container">
+        <video id="video" autoplay playsinline></video>
+        
+        <img id="centerPic" class="center-image" src="center-img.png" crossorigin="anonymous" alt="中央圖片">
+        
+        <button id="snap">📸 拍照下載</button>
+    </div>
+
+    <canvas id="canvas" style="display:none;"></canvas>
+
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const snap = document.getElementById('snap');
+        const centerPic = document.getElementById('centerPic');
+
+        // 1. 呼叫後置鏡頭 (environment)
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+            .then(stream => {
+                video.srcObject = stream;
+            })
+            .catch(err => {
+                console.error("無法存取相機", err);
+                alert("請允許網頁存取您的相機！");
+            });
+
+        // 2. 點擊拍照按鈕的合成與下載邏輯
+        snap.addEventListener('click', () => {
+            const ctx = canvas.getContext('2d');
+            
+            // 將畫布設定為相機的「真實解析度」
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+
+            // 步驟 A: 畫上相機的畫面
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            // 步驟 B: 計算中央圖片要畫多大、畫在哪裡
+            // 因為相機解析度可能很高，我們設定讓圖片寬度佔據照片總寬度的 1/3
+            const targetWidth = canvas.width / 3; 
+            // 依照原圖比例算出高度，才不會變形
+            const targetHeight = (targetWidth / centerPic.naturalWidth) * centerPic.naturalHeight; 
+            
+            // 算出完美置中的 X 與 Y 座標
+            const x = (canvas.width - targetWidth) / 2;
+            const y = (canvas.height - targetHeight) / 2;
+
+            // 將圖片畫上去
+            ctx.drawImage(centerPic, x, y, targetWidth, targetHeight);
+
+            // 步驟 C: 直接觸發下載
+            const dataURL = canvas.toDataURL('image/png');
+            const link = document.createElement('a'); 
+            link.download = 'my-photo.png'; // 這裡可以改您想要的預設下載檔名
+            link.href = dataURL; 
+            link.click(); 
+        });
+    </script>
+
+</body>
+</html>
